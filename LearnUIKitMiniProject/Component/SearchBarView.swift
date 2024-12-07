@@ -28,7 +28,7 @@ class SearchBarView: UIView {
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupView()
+        setupView(margin: 16)
     }
     
     private func setupView(margin: CGFloat) {
