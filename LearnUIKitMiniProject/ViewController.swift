@@ -1,63 +1,19 @@
 import UIKit
-import Foundation
-
-struct MealResponse: Codable {
-    let meals: [Meal]?
-}
-
-struct Meal: Codable {
-    let idMeal: String
-    let strMeal: String
-    let strCategory: String
-    let strArea: String
-    let strInstructions: String
-    let strMealThumb: String
-    let strTags: String?
-    let strYoutube: String?
-}
-
-func fetchMeals(searchQuery: String, completion: @escaping (Result<[Meal], Error>) -> Void) {
-    let urlString = "https://www.themealdb.com/api/json/v1/1/search.php?s=\(searchQuery)"
-    guard let url = URL(string: urlString) else {
-        completion(.failure(NSError(domain: "Invalid URL", code: -1, userInfo: nil)))
-        return
-    }
-    
-    let task = URLSession.shared.dataTask(with: url) { data, response, error in
-        if let error = error {
-            completion(.failure(error))
-            return
-        }
-        
-        guard let data = data else {
-            completion(.failure(NSError(domain: "No Data", code: -1, userInfo: nil)))
-            return
-        }
-        
-        do {
-            let decodedResponse = try JSONDecoder().decode(MealResponse.self, from: data)
-            completion(.success(decodedResponse.meals ?? []))
-        } catch {
-            completion(.failure(error))
-        }
-    }
-    task.resume()
-}
 
 class ViewController: UIViewController, UISearchBarDelegate {
-    
+
     let stackCardView = UIStackView()
     let scrollCardView = UIScrollView()
+    var filterCategories: [String] = [] // Store unique categories
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
         
+        self.fetchAndDisplayMeals(query: "")
+        
         // UI Setup
         setupUI()
-        
-        // Fetch and display meals with a default search query
-        fetchAndDisplayMeals(query: "chicken")
     }
 
     private func setupUI() {
@@ -72,15 +28,15 @@ class ViewController: UIViewController, UISearchBarDelegate {
         // Search Bar
         let searchBarView = SearchBarView()
         searchBarView.translatesAutoresizingMaskIntoConstraints = false
-        searchBarView.onTextChanged = { text in
-            print("Search text: \(text)")
+        searchBarView.onTextChanged = { [weak self] text in
+            if !text.isEmpty {
+                self?.fetchAndDisplayMeals(query: text)
+            }
         }
 
         view.addSubview(searchBarView)
         
-        // Filter Buttons
-        let buttonData = ["Filter 1", "Filter 2", "Filter 3", "Filter 4", "Filter 5", "Filter 6"]
-
+        // Filter Buttons (dynamically populated)
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
@@ -100,19 +56,8 @@ class ViewController: UIViewController, UISearchBarDelegate {
             stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor)
         ])
 
-        buttonData.forEach { title in
-            let filterButton = FilterButton()
-            filterButton.title = title
-            filterButton.onTap = {
-                print("\(title) tapped!")
-            }
-
-            filterButton.button.setTitle(title, for: .normal)
-            filterButton.translatesAutoresizingMaskIntoConstraints = false
-            filterButton.widthAnchor.constraint(equalToConstant: 100).isActive = true
-
-            stackView.addArrangedSubview(filterButton)
-        }
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
         
         // card
         scrollCardView.translatesAutoresizingMaskIntoConstraints = false
@@ -122,7 +67,6 @@ class ViewController: UIViewController, UISearchBarDelegate {
         stackCardView.spacing = 16
         stackCardView.translatesAutoresizingMaskIntoConstraints = false
         scrollCardView.addSubview(stackCardView)
-        
         
         NSLayoutConstraint.activate([
             labelView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
@@ -157,6 +101,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
                 switch result {
                 case .success(let meals):
                     self?.updateCardViews(with: meals)
+                    self?.updateFilterButtons(with: meals) // Update filter buttons with categories
                 case .failure(let error):
                     print("Error: \(error.localizedDescription)")
                 }
@@ -179,7 +124,38 @@ class ViewController: UIViewController, UISearchBarDelegate {
             stackCardView.addArrangedSubview(card)
         }
     }
-    
+
+    func updateFilterButtons(with meals: [Meal]) {
+        let categories = Set(meals.compactMap { $0.strCategory }) // Extract unique categories
+        self.filterCategories = Array(categories)
+        
+        // Clear existing buttons
+        if let scrollView = view.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView,
+           let stackView = scrollView.subviews.first(where: { $0 is UIStackView }) as? UIStackView {
+            stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        }
+        
+        // Add new buttons for each category
+        filterCategories.forEach { category in
+            let filterButton = FilterButton()
+            filterButton.title = category
+            filterButton.onTap = {
+                print("\(category) tapped!")
+            }
+
+            filterButton.button.setTitle(category, for: .normal)
+            filterButton.translatesAutoresizingMaskIntoConstraints = false
+            filterButton.widthAnchor.constraint(equalToConstant: 100).isActive = true
+
+            // Add the button to the stack view
+            if let scrollView = view.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView,
+               let stackView = scrollView.subviews.first(where: { $0 is UIStackView }) as? UIStackView {
+                stackView.addArrangedSubview(filterButton)
+            }
+        }
+    }
+
+    // Search Bar Delegate Method
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let query = searchBar.text, !query.isEmpty else { return }
         fetchAndDisplayMeals(query: query)
@@ -187,20 +163,3 @@ class ViewController: UIViewController, UISearchBarDelegate {
     }
 }
 
-extension UIImageView {
-    func loadImage(from urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        
-        self.image = UIImage(systemName: "photo")
-
-        DispatchQueue.global().async {
-            if let data = try? Data(contentsOf: url) {
-                if let image = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        self.image = image
-                    }
-                }
-            }
-        }
-    }
-}
