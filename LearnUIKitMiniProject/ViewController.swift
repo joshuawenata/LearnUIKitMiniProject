@@ -69,7 +69,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
         scrollCardView.addSubview(stackCardView)
         
         NSLayoutConstraint.activate([
-            labelView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            labelView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: -16),
             labelView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             labelView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             
@@ -119,6 +119,15 @@ class ViewController: UIViewController, UISearchBarDelegate {
             card.image = UIImage(systemName: "photo")
             card.onTap = {
                 print("Tapped on \(meal.strMeal)")
+
+                if let navigationController = self.navigationController {
+                    print("Navigating to DetailViewController")
+                    let detailVC = DetailViewController()
+                    detailVC.meal = meal
+                    navigationController.pushViewController(detailVC, animated: true)
+                } else {
+                    print("navigationController is nil")
+                }
             }
             card.imageView.loadImage(from: meal.strMealThumb)
             stackCardView.addArrangedSubview(card)
@@ -129,13 +138,11 @@ class ViewController: UIViewController, UISearchBarDelegate {
         let categories = Set(meals.compactMap { $0.strCategory }) // Extract unique categories
         self.filterCategories = Array(categories)
         
-        // Clear existing buttons
         if let scrollView = view.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView,
            let stackView = scrollView.subviews.first(where: { $0 is UIStackView }) as? UIStackView {
             stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         }
         
-        // Add new buttons for each category
         filterCategories.forEach { category in
             let filterButton = FilterButton()
             filterButton.title = category
@@ -147,7 +154,6 @@ class ViewController: UIViewController, UISearchBarDelegate {
             filterButton.translatesAutoresizingMaskIntoConstraints = false
             filterButton.widthAnchor.constraint(equalToConstant: 100).isActive = true
 
-            // Add the button to the stack view
             if let scrollView = view.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView,
                let stackView = scrollView.subviews.first(where: { $0 is UIStackView }) as? UIStackView {
                 stackView.addArrangedSubview(filterButton)
@@ -155,7 +161,6 @@ class ViewController: UIViewController, UISearchBarDelegate {
         }
     }
 
-    // Search Bar Delegate Method
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let query = searchBar.text, !query.isEmpty else { return }
         fetchAndDisplayMeals(query: query)
