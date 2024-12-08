@@ -21,24 +21,24 @@ class SearchBarView: UIView {
     
     var onTextChanged: ((String) -> Void)?
     
-    init(margin: CGFloat = 16) {
+    init() {
         super.init(frame: .zero)
-        setupView(margin: margin)
+        setupView()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupView(margin: 16)
+        setupView()
     }
     
-    private func setupView(margin: CGFloat) {
+    private func setupView() {
         addSubview(searchBar)
         searchBar.delegate = self
         
         NSLayoutConstraint.activate([
             searchBar.topAnchor.constraint(equalTo: topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: margin),
-            searchBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -margin),
+            searchBar.leadingAnchor.constraint(equalTo: leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: trailingAnchor),
             searchBar.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
